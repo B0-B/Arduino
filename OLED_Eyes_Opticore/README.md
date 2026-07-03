@@ -10,7 +10,7 @@ Adafruit GFX overlay API and library for rendering customized robot-like eyes on
 
 # Usage
 
-## Getting-Started 
+## 🚀 Getting-Started 
 
 ### Arduino Demo
 ---
@@ -51,7 +51,7 @@ void loop() {
 ```
 
 
-## Library API
+## 📄 Library API
 
 The optiCore provides a toolkit for creating custom animations or call pre-defined emotions and expressions separately.
 
