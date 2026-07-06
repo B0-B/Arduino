@@ -25,6 +25,7 @@
  * based on minimum and maximum duty cycle limits. It then converts this duration into a discrete 
  * integer value proportional to the hardware's timer resolution (`writeRange`) and updates the PWM output.
  * 
+ * @param pin The servo GPIO pin number.
  * @param angle The target servo position in degrees. Clamped automatically between 0.0f and 180.0f.
  * @param writeRange The resolution/maximum value of the PWM timer (e.g., 65535 for 16-bit PWM). Defaults to 65535.
  * @param frequencyHz The operating frequency of the servo in Hertz. Defaults to 50Hz (standard 20ms period).
@@ -33,7 +34,7 @@
  * 
  * @note This function relies on a globally defined `SERVO_PIN` constant and the `analogWrite()` framework function.
  */
-inline void setServoAngle (float angle, uint32_t writeRange = 65535, uint32_t frequencyHz=50, float dutyMin = 0.00105, float dutyMax = 0.005) {
+inline void setServoAngle (uint8_t pin, float angle, uint32_t writeRange = 65535, uint32_t frequencyHz=50, float dutyMin = 0.00105, float dutyMax = 0.005) {
   if (angle < 0.0f) angle = 0.0f;
   else if (angle > 180.0f) angle = 180.0f;
   const float T = 1.0f / (float)frequencyHz; // full period in seconds
@@ -41,5 +42,5 @@ inline void setServoAngle (float angle, uint32_t writeRange = 65535, uint32_t fr
   // Map seconds duty cycle onto the writeRange
   int decimalValue = (int)roundf( (float)writeRange * dutyCycle / T );
   // Write the exact microsecond duration directly to the hardware
-  analogWrite(SERVO_PIN, decimalValue);
+  analogWrite(pin, decimalValue);
 }
