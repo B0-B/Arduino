@@ -60,5 +60,5 @@ float norm (float mean=0, float sigma=1) {
         stdNorm = sqrtf(-2*logf(u1)) * sinf( 2.0f * PI * u2 );
 
     // First scale up and shift to obtain desired mean and sigma
-    return mean + norm * sigma;
+    return mean + stdNorm * sigma;
 }
