@@ -586,18 +586,14 @@ inline void demo () {
  * 
  * @param sda_pin   The GPIO pin number allocated for the I2C Data (SDA).
  * @param scl_pin   The GPIO pin number allocated for the I2C Clock (SCL).
- * @param baud_rate Optional serial communication speed in bits per second. 
- *                  Defaults to 115200 if omitted.
  */
-inline void optiCoreInit(uint8_t sda_pin, uint8_t scl_pin, uint32_t baud_rate=115200) {
-  // Initialize serial communication for debugging
-  Serial.begin( baud_rate );
+inline void optiCoreInit(uint8_t sda_pin, uint8_t scl_pin) {
   // Initialize I2C with defined pins
   Wire.begin(sda_pin, scl_pin);
   // Initialize the OLED display. 
   // 0x3C is the most common I2C address for these screens. Change to 0x3D if it fails.
   if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { 
-    Serial.println(F("SSD1306 allocation failed"));
+    Serial.println("SSD1306 allocation failed");
     for(;;); // Don't proceed, loop forever
   }
   // Clear the buffer
