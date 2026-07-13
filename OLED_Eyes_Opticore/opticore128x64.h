@@ -32,6 +32,7 @@
 #define EYE_RADIUS 10
 #define EYE_ECCENTRICITY 1.0
 #define EYE_GAP_BIAS 4
+#define EYE_CLOSE_GAP 2
 #define FRAME_DELAY_MS 5
 #define LOOP_DELAY_MS 100
 
@@ -47,7 +48,7 @@ inline Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 /**
  * Generates a random number uniformly from the provided interval [a, b].
  */
-inline long u (long a, long b) {
+inline long _u (long a, long b) {
   // Makes the range [a, b] fully inclusive using pure integer math
   return random(a, b + 1);
 }
@@ -55,7 +56,7 @@ inline long u (long a, long b) {
 /**
  * Generates an independent and identically distributed float between 0 and 1.  
  */
-inline double iid () {
+inline double _iid () {
     // Divides a random number by the maximum possible random number
     return (double)random(0, LONG_MAX) / LONG_MAX;
 }
@@ -64,7 +65,7 @@ inline double iid () {
 /// @param likelihood Sampling likelihood 
 /// @return boolean
 bool sample(float likelihood) {
-  return iid() < likelihood;
+  return _iid() < likelihood;
 }
 
 // -------------------------------------------------------------------
@@ -110,25 +111,27 @@ bool    curiosity = false;
  * Draws a basic eye with x and y coordinates, a scale and upper and lower eye lids.
  */
 inline void drawBaseEye (int8_t x, int8_t y, float scale=1, uint8_t upperEyeLid=0, uint8_t lowerEyeLid=0, uint8_t lowerSquint=0, uint8_t _browShift=0, int8_t _browAngle=0) {
+  
+  const uint8_t height = scale * ( EYE_HEIGHT - upperEyeLid - lowerEyeLid),
+                width  = scale * EYE_WIDTH;
   // Draw round rect
-  const uint8_t height = scale * ( EYE_HEIGHT - upperEyeLid - lowerEyeLid);
   uint8_t radius = (height < 2 * scale * EYE_RADIUS) ? max(0, height / 2 - 1) : scale * EYE_RADIUS;
   display.fillRoundRect(  x, 
                           y + upperEyeLid * scale, 
-                          EYE_WIDTH * scale, 
-                          EYE_HEIGHT * scale - lowerEyeLid * scale, 
+                          width, 
+                          height, 
                           radius, 
                           1); // Draw white
   if (lowerSquint) {
     display.fillRoundRect(  x, 
                             y + upperEyeLid * scale + height - lowerSquint, 
-                            EYE_WIDTH * scale, 
+                            width, 
                             EYE_HEIGHT * scale - lowerEyeLid * scale, 
                             radius, 
                             0); // Draw black
   }
   if (_browAngle || _browShift) {
-    const uint8_t browWidth  = 1.5 * scale * EYE_WIDTH,
+    const uint8_t browWidth  = (float)(1.2 * scale * EYE_WIDTH) / abs(cos(_browAngle)),
                   browHeight = scale * EYE_HEIGHT / 2 + abs(sin(_browAngle) * scale * EYE_WIDTH/2);
     display.fillRotatedRect(x + scale * EYE_WIDTH / 2, 
                             y - browHeight / 2 + _browShift,
@@ -329,25 +332,26 @@ inline void eyesNormalize () {
 // Animations
 
 inline void blink () {
-  const uint8_t TDL = eyeLidTDL, 
-                TDR = eyeLidTDR, 
-                TUL = eyeLidTUL, 
-                TUR = eyeLidTUR;
-  const uint8_t trueHeightL = eyeScale * (EYE_HEIGHT - TDL - TUL), 
-                trueHeightR = eyeScale * (EYE_HEIGHT - TDR - TUR);
-  const uint8_t sL = trueHeightL / 2 - 2, 
-                sR = trueHeightR / 2 - 2;
-  eyesTransition(eyePosXL, eyePosYL, eyePosXR, eyePosYR, eyeScale, sL, sR, sL, sR);
-  delay(20);
-  eyesTransition(eyePosXL, eyePosYL, eyePosXR, eyePosYR, eyeScale, TDL, TDR, TUL, TUR);
+  // Backup current lid numbers
+  const uint8_t CDL = eyeLidDL, 
+                CDR = eyeLidDR, 
+                CUL = eyeLidUL, 
+                CUR = eyeLidUR;
+
+  const uint8_t trueHeight = eyeScale * EYE_HEIGHT;
+  const uint8_t lidClose = ( trueHeight - EYE_CLOSE_GAP ) / 2;
+  
+  eyesTransition(eyePosXL, eyePosYL, eyePosXR, eyePosYR, eyeScale, lidClose, lidClose, lidClose, lidClose);
+  delay(100);
+  eyesTransition(eyePosXL, eyePosYL, eyePosXR, eyePosYR, eyeScale, CDL, CDR, CUL, CUR);
 }
 
 inline void lookAround () {
-  if (iid() < .05) {Serial.println("blink"); blink();}
-  int8_t x = u(-15, 15);
-  int8_t y = u(-12, 12);
+  if (_iid() < .05) {Serial.println("blink"); blink();}
+  int8_t x = _u(-15, 15);
+  int8_t y = _u(-12, 12);
   eyesTransition(x, y, x, y, 1);
-  delay(u(1000, 4000));
+  delay(_u(1000, 4000));
 }
 
 inline void leery () {
@@ -355,12 +359,12 @@ inline void leery () {
   curiosity = true;
   const size_t maxTransitions = 10;
   for (size_t i = 0; i < maxTransitions; i++){
-    if (iid() < .05) {Serial.println("blink"); blink();};
-    int8_t x = u(-10, 10), y = u(-10, 10);
-    uint8_t lids = u(6, 14);
-    eyesTransition(x, y, x, y, 1, lids, lids, lids, lids, 0, u(10, 25));
-    delay(u(400, 2000));
-    if (iid() < 0.05) break;
+    if (_iid() < .05) {Serial.println("blink"); blink();};
+    int8_t x = _u(-10, 10), y = _u(-10, 10);
+    uint8_t lids = _u(6, 14);
+    eyesTransition(x, y, x, y, 1, lids, lids, lids, lids, 0, _u(10, 25));
+    delay(_u(400, 2000));
+    if (_iid() < 0.05) break;
   }
   eyesNormalize();
   curiosity = false;
@@ -371,16 +375,16 @@ inline void happy () {
   eyesTransition(0, 5, 0, 5, 0.8, 0, 0, 0, 0);
   eyesTransition(0, 5, 0, 5, 0.8, 0, 0, 0, 0, 20);
   // Delay 
-  delay(u(1000, 3000));
+  delay(_u(1000, 3000));
   // Look around a bit
   for (size_t i = 0; i < 5; i++)
   {
-    int8_t x = u(-15, 15);
-    int8_t y = u(-12, 12);
-    int8_t s = u(18, 22);
+    int8_t x = _u(-15, 15);
+    int8_t y = _u(-12, 12);
+    int8_t s = _u(18, 22);
     eyesTransition(x, y, x, y, 0.8, 0, 0, 0, 0, s);
-    delay(u(1000, 2000));
-    if (iid() < .05) break;
+    delay(_u(1000, 2000));
+    if (_iid() < .05) break;
   }
   eyesNormalize();
 }
@@ -388,57 +392,57 @@ inline void happy () {
 inline void sad () {
   eyesNormalize();
   eyesTransition(0, 10, 0, 10, 1.15, 0, 0, 0, 0, 0, 15, -20);
-  delay(u(1000, 3000));
+  delay(_u(1000, 3000));
   uint8_t x, y;
   float scale;
   for (size_t i = 0; i < 4; i++)
   {
-    x = u(-15, 15);
-    y = u(10, 15);
-    eyesTransition(x, y, x, y, iid() * 0.2 + 1.05, 0, 0, 0, 0, 0, u(15, 20), u(-20, -30));
-    delay(u(1000, 2000));
-    if (iid() < 0.05) break;
+    x = _u(-15, 15);
+    y = _u(10, 15);
+    eyesTransition(x, y, x, y, _iid() * 0.2 + 1.05, 0, 0, 0, 0, 0, _u(15, 20), _u(-20, -30));
+    delay(_u(1000, 2000));
+    if (_iid() < 0.05) break;
   }
 }
 
 inline void bored () {
   eyesTransition(0, 10, 0, 10, 1.15, 0, 0, 0, 0, 0, 15, 0);
-  delay(u(1000, 3000));
+  delay(_u(1000, 3000));
   uint8_t x, y;
   float scale;
   for (size_t i = 0; i < 8; i++)
   {
-    x = u(-10, 10);
-    y = u(5, 15);
-    eyesTransition(x, y, x, y, iid() * 0.1 + .95, 0, 0, 0, 0, 0, u(20, 30), 0);
-    delay(u(1000, 2000));
-    if (iid() < 0.05) break;
+    x = _u(-10, 10);
+    y = _u(5, 15);
+    eyesTransition(x, y, x, y, _iid() * 0.1 + .95, 0, 0, 0, 0, 0, _u(20, 30), 0);
+    delay(_u(1000, 2000));
+    if (_iid() < 0.05) break;
   }
 }
 
 inline void angry () {
   eyesNormalize();
   eyesTransition(0, 10, 0, 10, 1.15, 0, 0, 0, 0, 0, 15, 20);
-  delay(u(1000, 3000));
+  delay(_u(1000, 3000));
   uint8_t x, y, shift; 
   int8_t  angle;
   float scale;
   for (size_t i = 0; i < 4; i++)
   {
-    x = u(-10, 10);
-    y = u(-10, 0);
-    shift = u(25, 35);
-    angle = u(25, 40);
-    scale = iid() * 0.2 + 1.05;
+    x = _u(-10, 10);
+    y = _u(-10, 0);
+    shift = _u(25, 35);
+    angle = _u(25, 40);
+    scale = _iid() * 0.2 + 1.05;
     eyesTransition(x, y, x, y, scale, 0, 0, 0, 0, 0, shift, angle);
-    delay(u(1000, 2000));
-    const double _u = iid();
+    delay(_u(1000, 2000));
+    const double rand = _iid();
     // Sometimes exit early
-    if (_u < 0.05) break;
+    if (rand < 0.05) break;
     // Sometimes (but more likely) shake from rage
-    else if (_u < .25) {
+    else if (rand < .25) {
       // Shake from rage
-      uint8_t x_direction = 2, y_direction = 1, rounds = u(6, 10);
+      uint8_t x_direction = 2, y_direction = 1, rounds = _u(6, 10);
       for (size_t j = 0; j < rounds; j++)
       {
         x_direction *= -1;
@@ -533,46 +537,7 @@ inline void screensaverCube () {
   // delay(15);
 }
 
-/**
- * A demonstration of eye movements: mainly looks around and samples random moods from time to time.
- * The function can be called in a loop for continuous flow.
- */
-inline void demo () {
-  double _u = iid();
 
-  // Decide what to display
-  if (iid() < .01) {
-      Serial.println("sad");
-      bored();
-  }
-  else if (iid() < .03) {
-      Serial.println("blink");
-      blink();
-  }
-  else if (iid() < .06) {
-      Serial.println("happy");
-      happy();
-  }
-  else if (iid() < .11) {
-      Serial.println("bored");
-      bored();
-  }
-  else if (iid() < .16) {
-      Serial.println("leery");
-      leery();
-  }
-  else if (iid() < .31) {
-      Serial.println("blink");
-      blink();
-  }
-  else {
-      Serial.println("lookaround");
-      lookAround();
-  }
-
-  // Frame delay
-  delay(LOOP_DELAY_MS);
-}
 
 
 
@@ -586,6 +551,8 @@ inline void demo () {
  * 
  * @param sda_pin   The GPIO pin number allocated for the I2C Data (SDA).
  * @param scl_pin   The GPIO pin number allocated for the I2C Clock (SCL).
+ * @param baud_rate Optional serial communication speed in bits per second. 
+ *                  Defaults to 115200 if omitted.
  */
 inline void optiCoreInit(uint8_t sda_pin, uint8_t scl_pin) {
   // Initialize I2C with defined pins
@@ -593,7 +560,7 @@ inline void optiCoreInit(uint8_t sda_pin, uint8_t scl_pin) {
   // Initialize the OLED display. 
   // 0x3C is the most common I2C address for these screens. Change to 0x3D if it fails.
   if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { 
-    Serial.println("SSD1306 allocation failed");
+    Serial.println(F("SSD1306 allocation failed"));
     for(;;); // Don't proceed, loop forever
   }
   // Clear the buffer
